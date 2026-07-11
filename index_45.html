@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resumo de Despesas — Manuela Oliveira</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg-deep: #0A0C1A;
+  --bg-card: #0F1225;
+  --bg-elevated: #141728;
+  --navy: #1E2761;
+  --gold: #C9A84C;
+  --gold-light: #E8C97A;
+  --text-primary: #F0EDE6;
+  --text-muted: #8B8FA8;
+  --success: #4CAF8C;
+  --warning: #E8A83C;
+  --danger: #E85C4A;
+  --border: rgba(201,168,76,0.15);
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Password overlay ---------- */
+#password-overlay {
+  position: fixed; inset: 0; background: var(--bg-deep);
+  z-index: 9999; display: flex; align-items: center; justify-content: center;
+}
+.pwd-box { text-align:center; padding:2rem; }
+.pwd-eyebrow { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--gold); margin-bottom:0.5rem; }
+.pwd-meta { font-family:'DM Sans',sans-serif; font-size:0.9rem; color:var(--text-muted); margin-bottom:2rem; }
+#pwd-input {
+  background: var(--bg-elevated); border:1px solid rgba(201,168,76,0.3); color:var(--text-primary);
+  padding:0.75rem 1.25rem; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:1rem;
+  width:260px; outline:none; text-align:center;
+}
+.pwd-btn {
+  background: linear-gradient(135deg,var(--gold),var(--gold-light)); color:var(--bg-deep); border:none;
+  padding:0.75rem 2rem; border-radius:8px; font-family:'DM Sans',sans-serif; font-weight:600; font-size:1rem;
+  cursor:pointer; margin-top:1.5rem;
+}
+#pwd-error { color:var(--danger); font-size:0.85rem; margin-top:1rem; display:none; }
+
+/* ---------- Layout ---------- */
+.section {
+  max-width: 900px; margin: 0 auto; padding: 5rem 2rem; border-bottom: 1px solid var(--border);
+}
+.section-label {
+  font-family:'DM Sans',sans-serif; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase;
+  color: var(--gold); margin-bottom:0.75rem;
+}
+.section-title {
+  font-family:'Playfair Display',serif; font-size:clamp(1.75rem,4vw,2.5rem); font-weight:400;
+  color: var(--text-primary); margin-bottom:2.5rem; line-height:1.2;
+}
+.section-divider {
+  width:48px; height:2px; background: linear-gradient(90deg, var(--gold), transparent); margin:1rem 0 2rem;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  min-height: 90vh; display:flex; flex-direction:column; justify-content:center; align-items:center;
+  text-align:center; padding:4rem 2rem;
+  background: radial-gradient(ellipse at 50% 0%, rgba(30,39,97,0.4) 0%, transparent 70%),
+              radial-gradient(ellipse at 80% 80%, rgba(201,168,76,0.05) 0%, transparent 60%);
+}
+.hero-eyebrow {
+  font-family:'DM Sans',sans-serif; font-size:0.75rem; letter-spacing:0.2em; text-transform:uppercase;
+  color: var(--gold); margin-bottom:1.5rem;
+}
+.hero-name {
+  font-family:'Playfair Display',serif; font-size:clamp(2.5rem,6vw,5rem); font-weight:400;
+  color: var(--text-primary); margin:0 0 1rem; line-height:1.1;
+}
+.hero-meta { font-family:'DM Sans',sans-serif; font-size:0.85rem; color:var(--text-muted); margin-bottom:2rem; }
+.hero-statement {
+  font-family:'DM Sans',sans-serif; font-size:1.1rem; color:var(--text-muted); max-width:600px; line-height:1.7;
+}
+
+/* ---------- Metrics ---------- */
+.metric-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin:2rem 0;
+}
+.metric-card {
+  background: var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:1.5rem;
+}
+.metric-label {
+  font-family:'DM Sans',sans-serif; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em;
+  color: var(--text-muted); margin-bottom:0.5rem;
+}
+.metric-value { font-family:'DM Mono',monospace; font-size:1.75rem; color:var(--gold); font-weight:500; }
+.metric-sub { font-family:'DM Sans',sans-serif; font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem; }
+
+.chart-container { position:relative; height:340px; max-width:420px; margin:3rem auto 0; }
+
+/* ---------- Category breakdown ---------- */
+.cat-block { margin-bottom: 2.5rem; }
+.cat-header {
+  display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.9rem;
+  padding-bottom:0.6rem; border-bottom:1px solid var(--border);
+}
+.cat-name { font-family:'Playfair Display',serif; font-size:1.15rem; color:var(--text-primary); }
+.cat-total { font-family:'DM Mono',monospace; font-size:1.1rem; color:var(--gold); }
+.line-item {
+  display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0;
+  font-size:0.92rem;
+}
+.line-name { color: var(--text-muted); }
+.line-value { font-family:'DM Mono',monospace; color: var(--text-primary); }
+.line-bar-track { background: var(--bg-elevated); border-radius:4px; height:6px; margin-top:4px; overflow:hidden; }
+.line-bar-fill { height:100%; border-radius:4px; background: linear-gradient(90deg,var(--gold),var(--gold-light)); }
+.line-item-wrap { width:100%; }
+
+/* ---------- Footer ---------- */
+.footer { text-align:center; padding:4rem 2rem 3rem; }
+.footer-logo {
+  width:48px; height:48px; border-radius:50%; border:1px solid var(--border); margin:0 auto 1rem;
+  display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif;
+  color:var(--gold); font-size:1.1rem;
+}
+.footer-name { font-family:'Playfair Display',serif; color:var(--text-primary); font-size:1.1rem; }
+.footer-title { font-size:0.85rem; color:var(--text-muted); margin-top:0.2rem; }
+.footer-brand { font-size:0.8rem; color:var(--gold); margin-top:0.3rem; letter-spacing:0.05em; }
+.footer-contact { font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem; }
+.footer-disclaimer {
+  font-size:0.75rem; color:var(--text-muted); max-width:520px; margin:1.5rem auto 0; line-height:1.6; opacity:0.7;
+}
+
+@media (max-width:600px){
+  .section{ padding:3rem 1.25rem; }
+  .metric-grid{ grid-template-columns:1fr 1fr; }
+  .chart-container{ height:280px; }
+}
+</style>
+</head>
+<body>
+
+<!-- PASSWORD OVERLAY -->
+<div id="password-overlay">
+  <div class="pwd-box">
+    <div class="pwd-eyebrow">Planejamento Financeiro</div>
+    <div class="pwd-meta">Manuela Oliveira · Resumo de Despesas</div>
+    <input id="pwd-input" type="password" placeholder="Senha de acesso">
+    <br>
+    <button class="pwd-btn" onclick="checkPassword()">Acessar</button>
+    <div id="pwd-error">Senha incorreta. Tente novamente.</div>
+  </div>
+</div>
+
+<!-- CONTEÚDO PRINCIPAL -->
+<div id="main-content" style="display:none;">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">Planejamento Financeiro Pessoal</div>
+    <h1 class="hero-name">Manuela Oliveira</h1>
+    <div class="hero-meta">Resumo de Despesas · Atualizado até 10/07 · Elaborado por Matheus Melo, Planejador Financeiro Master</div>
+    <p class="hero-statement">
+      Este resumo organiza suas despesas do mês por categoria, mostrando onde o dinheiro
+      está indo em cada área da sua vida financeira.
+    </p>
+  </section>
+
+  <!-- SNAPSHOT -->
+  <section class="section">
+    <div class="section-label">Visão Geral</div>
+    <h2 class="section-title">Para onde foi o seu dinheiro</h2>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Total do mês</div>
+        <div class="metric-value">R$ 17.888,31</div>
+        <div class="metric-sub">Soma de todas as categorias</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Despesas obrigatórias</div>
+        <div class="metric-value">R$ 1.978,69</div>
+        <div class="metric-sub">11,1% do total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Não obrigatórias</div>
+        <div class="metric-value">R$ 5.978,87</div>
+        <div class="metric-sub">33,4% do total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Empresa e autônomo</div>
+        <div class="metric-value">R$ 3.780,75</div>
+        <div class="metric-sub">21,1% do total</div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="allocationChart"></canvas>
+    </div>
+  </section>
+
+  <!-- DETALHAMENTO -->
+  <section class="section">
+    <div class="section-label">Detalhamento</div>
+    <h2 class="section-title">Categoria por categoria</h2>
+
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-name">Despesas obrigatórias</div>
+        <div class="cat-total">R$ 1.978,69</div>
+      </div>
+      <div id="cat-obrig"></div>
+    </div>
+
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-name">Empresa e autônomo</div>
+        <div class="cat-total">R$ 3.780,75</div>
+      </div>
+      <div id="cat-empresa"></div>
+    </div>
+
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-name">Despesas não obrigatórias</div>
+        <div class="cat-total">R$ 5.978,87</div>
+      </div>
+      <div id="cat-naoobrig"></div>
+    </div>
+
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-name">Projetos</div>
+        <div class="cat-total">R$ 6.150,00</div>
+      </div>
+      <div id="cat-projetos"></div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-logo">MM</div>
+    <div class="footer-name">Matheus Melo</div>
+    <div class="footer-title">Planejador Financeiro Master</div>
+    <div class="footer-brand">Grão | Grupo Primo</div>
+    <div class="footer-contact">@financasmatheus.melo</div>
+    <div class="footer-disclaimer">
+      Este documento é confidencial e foi elaborado exclusivamente para Manuela Oliveira.
+      As informações apresentadas são baseadas nos dados coletados até a data de emissão.
+    </div>
+  </footer>
+
+</div>
+
+<script>
+function checkPassword() {
+  const input = document.getElementById('pwd-input').value;
+  if (input === 'manuela2026') {
+    document.getElementById('password-overlay').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    initCharts();
+    renderCategories();
+  } else {
+    document.getElementById('pwd-error').style.display = 'block';
+  }
+}
+document.getElementById('pwd-input').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') checkPassword();
+});
+
+function initCharts() {
+  const chartColors = ['#C9A84C','#1E2761','#4CAF8C','#8B8FA8'];
+  new Chart(document.getElementById('allocationChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Despesas obrigatórias','Empresa e autônomo','Despesas não obrigatórias','Projetos (Viagem)'],
+      datasets: [{
+        data: [1978.69, 3780.75, 5978.87, 6150.00],
+        backgroundColor: chartColors,
+        borderColor: '#0A0C1A',
+        borderWidth: 3,
+        hoverBorderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#8B8FA8', font: { family: 'DM Sans', size: 12 }, padding: 14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct = ((ctx.parsed/total)*100).toFixed(1);
+              return ` ${ctx.label}: R$ ${ctx.parsed.toLocaleString('pt-BR',{minimumFractionDigits:2})} (${pct}%)`;
+            }
+          }
+        }
+      },
+      cutout: '65%'
+    }
+  });
+}
+
+function renderCategories() {
+  const data = {
+    'cat-obrig': [
+      ['Transporte', 347.62], ['Alimentação', 135.44], ['Saúde', 354.93],
+      ['Despesas médicas', 361.00], ['Cuidados pessoais', 299.80],
+      ['Serviços financeiros', 349.90], ['Educação', 130.00]
+    ],
+    'cat-empresa': [
+      ['Infraestrutura', 1665.66], ['Colaboradores', 1895.09],
+      ['Prestadores de serviço', 40.00], ['Insumos e outros', 180.00]
+    ],
+    'cat-naoobrig': [
+      ['Assinaturas e Serviços', 5.90], ['Restaurantes', 442.43],
+      ['Compras', 3067.70], ['Lazer', 33.00], ['Tarifas bancárias', 27.36],
+      ['Presentes e doações', 107.61], ['Esportes', 550.00],
+      ['Outros (parcelamentos de cartão)', 1744.87]
+    ],
+    'cat-projetos': [
+      ['Viagem-Projetos', 6150.00]
+    ]
+  };
+
+  Object.keys(data).forEach(id => {
+    const items = data[id];
+    const max = Math.max(...items.map(i => i[1]));
+    const container = document.getElementById(id);
+    container.innerHTML = items.map(([name, value]) => {
+      const pct = (value / max) * 100;
+      const formatted = value.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+      return `<div class="line-item-wrap">
+        <div class="line-item">
+          <span class="line-name">${name}</span>
+          <span class="line-value">R$ ${formatted}</span>
+        </div>
+        <div class="line-bar-track"><div class="line-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  });
+}
+</script>
+</body>
+</html>
